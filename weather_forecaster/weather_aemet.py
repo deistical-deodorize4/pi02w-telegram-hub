@@ -646,7 +646,7 @@ def _cache_age_line() -> str:
 
 
 def format_morning_report() -> str | None:
-    """Morning weather brief — designed for Telegram Markdown."""
+    """Morning weather brief — clean Markdown for Telegram."""
     current, station = _fetch_current()
     forecast_data = _fetch_forecast()
     days = _parse_forecast(forecast_data) if forecast_data else []
@@ -661,23 +661,21 @@ def format_morning_report() -> str | None:
 
     # ── Header ────────────────────────────────────────────────────────────
     lines.append("☀️ *Buenos días — Zaragoza*")
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
     if station:
         lines.append(f"📍 {station} · AEMET")
     cache_note = _cache_age_line()
     if cache_note:
         lines.append(cache_note)
+    lines.append("───")
     lines.append("")
 
     # ── Current conditions ────────────────────────────────────────────────
     if current:
         cur = _parse_current(current)
         time_str = now.strftime("%H:%M")
-        lines.append(f"🌡 *Ahora* ({time_str}): {cur['temp']:.1f}°C")
         lines.append(
-            f"💧 {cur['humidity']:.0f}%  ·  "
-            f"💨 {cur['wind_speed']:.1f} km/h"
+            f"🌡 *Ahora* ({time_str}): {cur['temp']:.1f}°C · "
+            f"💧 {cur['humidity']:.0f}% · 💨 {cur['wind_speed']:.1f} km/h"
         )
         lines.append("")
 
@@ -698,9 +696,9 @@ def format_morning_report() -> str | None:
         t_max = _max_temp(temps)
 
         # Day header with sunrise/sunset
-        header = f"📅 *{_format_date_short(fecha)} ({weekday})*"
+        header = f"📅 *{weekday} {_format_date_short(fecha)}*"
         if orto and ocaso:
-            header += f"     🌅{orto} 🌇{ocaso}"
+            header += f" · 🌅{orto}  🌇{ocaso}"
         lines.append(header)
 
         # Morning / afternoon / evening slots
@@ -716,12 +714,10 @@ def format_morning_report() -> str | None:
                     compass = _wind_degrees_to_compass(float(v))
                 except (ValueError, TypeError):
                     compass = ""
-                feels_str = f" (sens {float(f):.0f}°C)" if f else ""
+                feels_str = f" · s {float(f):.0f}°C" if f else ""
                 sky_short = _sky_short(s)
                 lines.append(
-                    f"  {label:<7} {h:02d}h  "
-                    f"{float(t):.0f}°C{feels_str}  "
-                    f"{sky_short}  {p}%  {compass}"
+                    f"  ▸ {h:02d}h  {float(t):.0f}°C{feels_str} · {sky_short} · 💧{p}% {compass}"
                 )
 
         # Min/max + sparkline
@@ -733,8 +729,7 @@ def format_morning_report() -> str | None:
                 continue
         spark = _temp_sparkline(temp_values, width=8)
         lines.append(
-            f"  🌡 {t_min:.0f}–{t_max:.0f}°C  "
-            f"{spark}"
+            f"  🌡 {t_min:.0f}–{t_max:.0f}°C  {spark}"
         )
         lines.append("")
 
@@ -742,8 +737,7 @@ def format_morning_report() -> str | None:
         if uvi_data:
             uvi_val = uvi_data["uvi"]
             uvi_lvl = uvi_data["level"]
-            bar = _temp_sparkline([uvi_val], width=1)
-            lines.append(f"🔆 *UV*: {uvi_val:.0f} ({uvi_lvl})")
+            lines.append(f"🔆 UV {uvi_val:.0f} ({uvi_lvl})")
             lines.append("")
 
         # ── Warnings ──────────────────────────────────────────────────────
@@ -761,33 +755,18 @@ def format_morning_report() -> str | None:
                 lines.append(f"  … y {len(warnings) - 3} más")
             lines.append("")
 
-        # ── Next 3 days ───────────────────────────────────────────────────
-        if len(days) > 1:
-            lines.append("🔮 *Próximos días*")
-            for day in days[1:4]:
-                t_min_d = _min_temp(day.get("temperatura", []))
-                t_max_d = _max_temp(day.get("temperatura", []))
-                s = _midday_sky(day.get("estadoCielo", []))
-                fecha_short = _format_date_short(day.get("fecha", ""))
-                wd = day.get("weekday", "")
-                lines.append(
-                    f"  {fecha_short} {wd:<4} {t_min_d:.0f}–{t_max_d:.0f}°C  {s}"
-                )
-
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
-# On-demand display (code-block-table style)
+# On-demand display (clean Markdown)
 # ---------------------------------------------------------------------------
 
 
 def format_ondemand() -> str | None:
     """Full detailed weather display — for the on-demand button.
 
-    Returns a plain-text / code-block-friendly string with no Markdown
-    formatting (bot.py wraps it in ``` ```).
+    Returns a Markdown-formatted string focused on today's hourly forecast.
     """
     current, station = _fetch_current()
     forecast_data = _fetch_forecast()
@@ -802,38 +781,34 @@ def format_ondemand() -> str | None:
     now = datetime.now()
 
     # ── Header ────────────────────────────────────────────────────────────
-    lines.append("🌤  Zaragoza Weather — AEMET")
-    lines.append("━" * 46)
-
+    lines.append("🌤 *Zaragoza — AEMET*")
     if station:
-        lines.append(f"📍 Estación: {station}")
+        lines.append(f"📍 {station}")
     cache_note = _cache_age_line()
     if cache_note:
         lines.append(cache_note)
+    lines.append("───")
     lines.append("")
 
     # ── Current Conditions ────────────────────────────────────────────────
     if current:
         cur = _parse_current(current)
-        lines.append("🔴 CURRENT CONDITIONS")
-        lines.append(f"  🌡 Temperature:   {cur['temp']:.1f}°C")
-        lines.append(f"  💧 Humidity:      {cur['humidity']:.0f}%")
-        lines.append(f"  💨 Wind:          {cur['wind_speed']:.1f} km/h")
-        lines.append(f"  📊 Pressure:      {cur['pressure']:.1f} hPa")
-        if cur["precip"] > 0:
-            lines.append(f"  🌧 Precipitation: {cur['precip']:.1f} mm")
+        lines.append(
+            f"🌡 *Ahora* ({now.strftime('%H:%M')}): {cur['temp']:.1f}°C · "
+            f"💧 {cur['humidity']:.0f}% · 💨 {cur['wind_speed']:.1f} km/h"
+        )
         lines.append("")
 
     # ── UV Index ──────────────────────────────────────────────────────────
     if uvi_data:
         uvi_val = uvi_data["uvi"]
         uvi_lvl = uvi_data["level"]
-        lines.append(f"🔆 UV Index: {uvi_val:.0f} ({uvi_lvl})")
+        lines.append(f"🔆 UV {uvi_val:.0f} ({uvi_lvl})")
         lines.append("")
 
     # ── Warnings ──────────────────────────────────────────────────────────
     if warnings:
-        lines.append("⚠️  AVISOS ACTIVOS")
+        lines.append("⚠️ *Avisos activos*")
         for w in warnings:
             icon = w["level_icon"]
             event = w["event"]
@@ -869,15 +844,10 @@ def format_ondemand() -> str | None:
         t_max = _max_temp(temps)
 
         # Day header
-        day_label = f"📅 TODAY · {fecha} ({weekday})"
+        day_label = f"📅 *{weekday} {_format_date_short(fecha)}*"
         if orto and ocaso:
-            day_label += f"  🌅{orto} 🌇{ocaso}"
+            day_label += f" · 🌅{orto}  🌇{ocaso}"
         lines.append(day_label)
-
-        # Table header
-        lines.append(f"  {'Hora':<6} {'Temp':<6} {'Sens':<6} "
-                      f"{'Cielo':<20} {'Lluvia':<7} {'Viento':<8}")
-        lines.append(f"  {'─' * 53}")
 
         # Row for each hourly entry
         for entry in temps:
@@ -891,60 +861,52 @@ def format_ondemand() -> str | None:
             except (ValueError, TypeError):
                 t_str = f"{t_val}°C"
 
-            # Feels-like
+            # Feels-like (only when meaningful)
             f_val = _get_slot(feels, h, "value")
             try:
-                f_str = f"{float(f_val):.0f}°C" if f_val else " --"
+                feels_str = f"(s {float(f_val):.0f}°)" if f_val else ""
             except (ValueError, TypeError):
-                f_str = " --"
+                feels_str = ""
 
             # Sky
             s_code = _get_slot_str(sky, h, "value")
             s_emoji = _sky_emoji(s_code)
-            s_short_emoji = _sky_short(s_code)
+            s_short = _sky_short(s_code)
 
             # Precipitation
             p_val = _get_slot(precip, h, "value", 0)
             try:
-                p_str = f"{int(float(p_val))}%"
+                p_str = f"💧{int(float(p_val))}%"
             except (ValueError, TypeError):
-                p_str = " 0%"
+                p_str = "💧0%"
 
             # Wind
             v_dir = _get_slot(viento, h, "direccion", 0)
             v_speed = _get_slot(viento, h, "velocidad", 0)
             try:
                 compass = _wind_degrees_to_compass(float(v_dir))
-                arrow = _wind_arrow(float(v_dir))
-                v_str = f"{arrow}{compass} {float(v_speed):.0f}"
+                v_str = f"🌬 {compass} {float(v_speed):.0f}"
             except (ValueError, TypeError):
-                v_str = "---"
+                v_str = "🌬 ---"
 
-            lines.append(
-                f"  {h:02d}:00  {t_str:<5} {f_str:<5} "
-                f"{s_emoji:<19} {p_str:<6} {v_str:<8}"
-            )
+            parts = [f"{h:02d}h {t_str}"]
+            if feels_str:
+                parts.append(feels_str)
+            parts.append(f"{s_emoji} {s_short}")
+            parts.append(p_str)
+            parts.append(v_str)
+            lines.append("  " + " · ".join(parts))
 
-        lines.append("")
+        # Min/max + sparkline
+        temp_values = []
+        for d in temps:
+            try:
+                temp_values.append(float(d.get("value", 0)))
+            except (ValueError, TypeError):
+                continue
+        spark = _temp_sparkline(temp_values, width=8)
+        lines.append(f"  🌡 {t_min:.0f}–{t_max:.0f}°C  {spark}")
 
-        # ── Multi-day forecast ────────────────────────────────────────────
-        if len(days) > 1:
-            lines.append("📅 NEXT DAYS")
-            for day in days[1:7]:
-                t_min_d = _min_temp(day.get("temperatura", []))
-                t_max_d = _max_temp(day.get("temperatura", []))
-                s = _midday_sky(day.get("estadoCielo", []))
-                fecha_label = day.get("fecha", "")
-                wd = day.get("weekday", "")
-                orto_d = day.get("orto", "")
-                ocaso_d = day.get("ocaso", "")
-                sun_str = f" 🌅{orto_d} 🌇{ocaso_d}" if orto_d and ocaso_d else ""
-                lines.append(
-                    f"  {fecha_label} ({wd}){sun_str}  "
-                    f"{t_min_d:.0f}–{t_max_d:.0f}°C  {s}"
-                )
-
-    lines.append("━" * 46)
     return "\n".join(lines)
 
 
