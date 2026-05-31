@@ -175,6 +175,12 @@ class DailyStats:
         disk_alert = "  ⚠️" if disk_pct > 75 else ""
         lines.append(f"💽 Disk · {disk_free:.1f}GB free ({disk_pct:.0f}%){disk_alert}")
 
+        # SD wear
+        sd_wear = _read_sd_wear()
+        if sd_wear:
+            label = "lifetime" if sd_wear["type"] == "lifetime" else "since boot"
+            lines.append(f"💾 SD Wear · {sd_wear['total_gb']}GB ({label})")
+
         # Weather
         lines.append(f"🌤 Weather APIs · Open-Meteo {om_status} · AEMET {aemet_status}")
 
@@ -272,6 +278,38 @@ def _check_aemet() -> str:
         return "✅" if resp.status_code == 200 else "❌"
     except Exception:
         return "❌"
+
+
+def _read_sd_wear() -> dict | None:
+    """Read SD card wear metrics.
+
+    Returns a dict with ``total_gb`` and ``type`` ("lifetime" or "boot"),
+    or ``None`` if neither source is available.
+    """
+    # 1. Persistent lifetime counter (ext4 filesystem — survives reboots)
+    try:
+        with open("/sys/fs/ext4/mmcblk0p2/lifetime_write_kbytes") as f:
+            total_kb = int(f.read().strip())
+        return {
+            "total_gb": round(total_kb / (1024 * 1024), 1),
+            "type": "lifetime",
+        }
+    except (FileNotFoundError, ValueError, OSError):
+        pass
+
+    # 2. Fallback: since-boot counter from /proc/diskstats
+    try:
+        with open("/proc/diskstats") as f:
+            for line in f:
+                parts = line.split()
+                if parts[2] == "mmcblk0":
+                    sectors = int(parts[9])  # field 9 = sectors written
+                    total_gb = (sectors * 512) / (1024**3)
+                    return {"total_gb": round(total_gb, 1), "type": "boot"}
+    except (FileNotFoundError, ValueError, IndexError, OSError):
+        pass
+
+    return None
 
 
 # ---------------------------------------------------------------------------
