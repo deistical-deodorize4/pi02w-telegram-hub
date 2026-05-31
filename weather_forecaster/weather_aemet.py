@@ -274,6 +274,20 @@ def _fetch_forecast() -> list | None:
     )
 
 
+def _safe_dato(day: dict, key: str) -> list:
+    """Extract the ``dato`` list from an AEMET field.
+
+    AEMET sometimes returns ``{"dato": [...]}`` and sometimes returns
+    ``[...]`` directly, depending on the server's mood.  Handle both.
+    """
+    val = day.get(key)
+    if isinstance(val, dict):
+        return val.get("dato", [])
+    if isinstance(val, list):
+        return val
+    return []
+
+
 def _parse_forecast(data: list) -> list:
     """Parse municipio forecast into a list of rich day dicts.
 
@@ -301,14 +315,14 @@ def _parse_forecast(data: list) -> list:
         parsed.append({
             "fecha": fecha_str,
             "weekday": weekday,
-            "temperatura": day.get("temperatura", {}).get("dato", []),
-            "sensTermica": day.get("sensTermica", {}).get("dato", []),
-            "estadoCielo": day.get("estadoCielo", {}).get("dato", []),
-            "probPrecipitacion": day.get("probPrecipitacion", {}).get("dato", []),
-            "precipitacion": day.get("precipitacion", {}).get("dato", []),
-            "viento": day.get("viento", {}).get("dato", []),
-            "humedad": day.get("humedad", {}).get("dato", []),
-            "probTormenta": day.get("probTormenta", {}).get("dato", []),
+            "temperatura": _safe_dato(day, "temperatura"),
+            "sensTermica": _safe_dato(day, "sensTermica"),
+            "estadoCielo": _safe_dato(day, "estadoCielo"),
+            "probPrecipitacion": _safe_dato(day, "probPrecipitacion"),
+            "precipitacion": _safe_dato(day, "precipitacion"),
+            "viento": _safe_dato(day, "viento"),
+            "humedad": _safe_dato(day, "humedad"),
+            "probTormenta": _safe_dato(day, "probTormenta"),
             "orto": day.get("orto", ""),
             "ocaso": day.get("ocaso", ""),
         })
@@ -331,16 +345,21 @@ def _fetch_uvi() -> dict[str, Any] | None:
         return None
     # Find the entry for Zaragoza
     for entry in data:
+        if not isinstance(entry, dict):
+            continue
         localidad = entry.get("localidad", entry.get("nombre", "")).strip().lower()
         if localidad == AEMET_UVI_LOCALIDAD.strip().lower():
             return entry
-    # Fall back to the first entry if no match (defensive)
-    return data[0] if data else None
+    # Fall back to the first dict entry if no match (defensive)
+    for entry in data:
+        if isinstance(entry, dict):
+            return entry
+    return None
 
 
 def _parse_uvi(raw: dict[str, Any] | None) -> dict[str, Any] | None:
     """Parse UV index response into a clean dict."""
-    if not raw:
+    if not raw or not isinstance(raw, dict):
         return None
     try:
         uvi = float(raw.get("uvi", raw.get("valor", 0)) or 0)
@@ -387,14 +406,19 @@ def _parse_warnings(raw: dict[str, Any] | None) -> list[dict[str, Any]]:
     if not raw or not isinstance(raw, dict):
         return []
 
-    alerts = []
-    info_list = raw.get("alert", raw).get("info", [])
+    alerts: list[dict[str, Any]] = []
+    alert_node = raw.get("alert", raw)
+    if not isinstance(alert_node, dict):
+        return []
+    info_list = alert_node.get("info", [])
 
     # Normalise to list if single
     if isinstance(info_list, dict):
         info_list = [info_list]
 
     for info in info_list:
+        if not isinstance(info, dict):
+            continue
         if info.get("language", "").lower() not in ("es", "", "spa"):
             continue
 
