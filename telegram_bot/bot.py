@@ -631,7 +631,7 @@ async def price_add_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     try:
         await update.message.reply_text(
             "📦 *Product name?*\n\n"
-            "Send /pricecancel anytime to cancel.",
+            "Send /cancel anytime to cancel.",
             parse_mode="Markdown",
         )
         log.warning("price_add_start reply sent OK")
@@ -700,7 +700,7 @@ async def price_remove_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for i, item in enumerate(items, 1):
         lines.append(f"{i}. {item.name} (`{item.id}`)")
     lines.append("")
-    lines.append("Send the number to remove or /pricecancel.")
+    lines.append("Send the number to remove or /cancel.")
 
     session["mode"] = "price_remove"
     session["form"] = {"items": items}
@@ -736,7 +736,7 @@ async def price_test_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     session["mode"] = "price_test"
     session["form"] = {}
     await update.message.reply_text(
-        "🔍 Send a URL to test, or /pricecancel.",
+        "🔍 Send a URL to test, or /cancel.",
     )
 
 
@@ -755,7 +755,7 @@ async def price_edit_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     for i, item in enumerate(items, 1):
         lines.append(f"{i}. *{item.name}* (`{item.id}`)")
     lines.append("")
-    lines.append("Send the number to edit or /pricecancel.")
+    lines.append("Send the number to edit or /cancel.")
 
     session["mode"] = "price_edit"
     session["form"] = {"step": "pick_item", "items": [i.to_dict() for i in items], "item_idx": None}
@@ -793,7 +793,7 @@ async def price_handle_edit_message(update: Update, text: str) -> None:
         lines.append("  A         — add a URL")
         lines.append("  R <num>   — remove URL (e.g. R 2)")
         lines.append("  D or done — finish editing")
-        lines.append("  /pricecancel — cancel")
+        lines.append("  /cancel — cancel")
 
         form["step"] = "action"
         await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
@@ -808,7 +808,7 @@ async def price_handle_edit_message(update: Update, text: str) -> None:
             form["pending_url"] = {}
             await update.message.reply_text(
                 "🔗 Send a link to add. I'll detect the site and test it.\n"
-                "Send /pricecancel to cancel.",
+                "Send /cancel to cancel.",
             )
             return
 
@@ -851,7 +851,7 @@ async def price_handle_edit_message(update: Update, text: str) -> None:
             await update.message.reply_text(
                 "❌ Can't detect site from that URL.\n"
                 "Supported: seeedstudio.com, tiendatec.es, amazon.es / .com / .de / .co.uk\n"
-                "Try again or /pricecancel."
+                "Try again or /cancel."
             )
             return
 
@@ -866,7 +866,7 @@ async def price_handle_edit_message(update: Update, text: str) -> None:
             display_currency = currency_got or currency
         except Exception as exc:
             await status_msg.edit_text(
-                f"❌ Error scraping: {exc}\nSend another URL or /pricecancel."
+                f"❌ Error scraping: {exc}\nSend another URL or /cancel."
             )
             return
 
@@ -910,7 +910,7 @@ async def price_handle_edit_message(update: Update, text: str) -> None:
                 lines.append("  A         — add another URL")
                 lines.append("  R <num>   — remove a URL (e.g. R 2)")
                 lines.append("  D or done — finish editing")
-                lines.append("  /pricecancel — cancel")
+                lines.append("  /cancel — cancel")
                 form["step"] = "action"
                 await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
                 return
@@ -950,7 +950,7 @@ async def price_handle_edit_message(update: Update, text: str) -> None:
             lines.append("  A         — add a URL")
             lines.append("  R <num>   — remove a URL (e.g. R 2)")
             lines.append("  D or done — finish editing")
-            lines.append("  /pricecancel — cancel")
+            lines.append("  /cancel — cancel")
             form["step"] = "action"
             await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
         else:
@@ -1038,7 +1038,7 @@ async def price_handle_add_message(update: Update, text: str) -> bool:
         await update.message.reply_text(
             f"📦 *{form['name']}*\n\n"
             "🔗 Send a link. I'll detect the site and test it.\n"
-            "Send /pricedone when finished or /pricecancel to cancel.",
+            "Send /pricedone when finished or /cancel to cancel.",
             parse_mode="Markdown",
         )
         return True
@@ -1165,7 +1165,7 @@ async def price_handle_message(update: Update, text: str) -> None:
     if mode == "price_add":
         handled = await price_handle_add_message(update, text)
         if not handled:
-            await update.message.reply_text("Hmm? Send a URL, /pricedone, or /pricecancel.")
+            await update.message.reply_text("Hmm? Send a URL, /pricedone, or /cancel.")
         return
 
     if mode == "price_remove":
@@ -1202,7 +1202,7 @@ async def price_handle_message(update: Update, text: str) -> None:
         # Otherwise it's a number pick
         handled = await price_handle_remove_message(update, text)
         if not handled:
-            await update.message.reply_text("Send a number or /pricecancel.")
+            await update.message.reply_text("Send a number or /cancel.")
         return
 
     if mode == "price_test":
@@ -1477,12 +1477,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(
             "🕐 *When?*\n\n"
             "Examples:\n"
-            "• `in 30 minutes`\n"
+            "• `in 30 mins`\n"
             "• `tomorrow at 3pm`\n"
             "• `friday at 9am`\n"
             "• `25/12 10:00`\n"
             "• `now`\n\n"
-            "Send /pricecancel anytime.",
+            "Send /cancel anytime.",
             parse_mode="Markdown",
         )
         return
@@ -1491,11 +1491,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         dt = rmd.parse_datetime(text, cfg.TIMEZONE)
         if dt is None:
             await update.message.reply_text(
-                "🤔 Didn't understand that time. Try:\n"
-                "• `in 30 minutes`\n"
-                "• `tomorrow at 3pm`\n"
-                "• `25/12 10:00`\n"
-                "• `now`",
+            "🤔 Didn't understand that time. Try:\n"
+            "• `in 30 mins`\n"
+            "• `tomorrow at 3pm`\n"
+            "• `25/12 10:00`\n"
+            "• `now`",
                 parse_mode="Markdown",
             )
             return
@@ -1506,34 +1506,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             return
 
-        session["form"]["dt"] = dt
-        session["mode"] = "reminder_confirm"
-
-        day_name = dt.strftime("%A").capitalize()
+        # Save immediately, no confirmation needed
+        msg = session["form"]["msg"]
+        r = rmd.add_reminder(msg, dt, cfg.TIMEZONE)
+        session["mode"] = "menu"
+        session["form"] = {}
         await update.message.reply_text(
-            f"⏰ Remind you *{day_name} {dt.strftime('%d/%m at %H:%M')}*?\n"
-            f"📝 {session['form']['msg']}\n\n"
-            "Confirm? (y/n)",
+            rmd.format_reminder(r),
             parse_mode="Markdown",
+            reply_markup=MENU_KEYBOARD,
         )
-        return
-
-    if session["mode"] == "reminder_confirm":
-        if text.lower() in ("y", "yes"):
-            msg = session["form"]["msg"]
-            dt = session["form"]["dt"]
-            r = rmd.add_reminder(msg, dt, cfg.TIMEZONE)
-            session["mode"] = "menu"
-            session["form"] = {}
-            await update.message.reply_text(
-                rmd.format_reminder(r),
-                parse_mode="Markdown",
-                reply_markup=MENU_KEYBOARD,
-            )
-        else:
-            session["mode"] = "menu"
-            session["form"] = {}
-            await update.message.reply_text("❌ Cancelled.", reply_markup=MENU_KEYBOARD)
         return
 
     # ------- Default: show hub menu -------
@@ -1568,7 +1550,7 @@ def main() -> None:
     app.add_handler(CommandHandler("monitor", handle_message))
     app.add_handler(CommandHandler("priceadd", price_add_start))
     app.add_handler(CommandHandler("pricedone", price_done))
-    app.add_handler(CommandHandler("pricecancel", price_cancel))
+    app.add_handler(CommandHandler("cancel", price_cancel))
     app.add_handler(CommandHandler("priceremove", price_remove_start))
     app.add_handler(CommandHandler("pricetest", price_test_start))
     app.add_handler(CommandHandler("priceedit", price_edit_start))

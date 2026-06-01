@@ -152,6 +152,7 @@ _DAY_NAMES = {
 
 _RELATIVE_PATTERNS = [
     (re.compile(r"in (\d+)\s*minutes?\b", re.I), "minutes"),
+    (re.compile(r"in (\d+)\s*mins?\b", re.I), "minutes"),
     (re.compile(r"in (\d+)\s*min\b", re.I), "minutes"),
     (re.compile(r"in (\d+)\s*hours?\b", re.I), "hours"),
     (re.compile(r"in (\d+)\s*h\b", re.I), "hours"),
