@@ -738,8 +738,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(f"Monitor error: {exc}")
         return
 
-    # ------- Default -------
-    await update.message.reply_text("Select an option.", reply_markup=MENU_KEYBOARD)
+    # ------- Default: show hub menu -------
+    session["mode"] = "menu"
+    session["history"] = []
+    session["form"] = {}
+    await update.message.reply_text(
+        "🤖 *pi02w Hub*\nSelect an option:",
+        parse_mode="Markdown",
+        reply_markup=MENU_KEYBOARD,
+    )
 
 
 # ---------------------------------------------------------------------------
