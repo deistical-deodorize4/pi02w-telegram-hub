@@ -1475,13 +1475,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         session["form"]["msg"] = text.strip()
         session["mode"] = "reminder_time"
         await update.message.reply_text(
-            "🕐 *When?*\n\n"
-            "Examples:\n"
-            "• `in 30 mins`\n"
-            "• `tomorrow at 3pm`\n"
-            "• `friday at 9am`\n"
-            "• `25/12 10:00`\n"
-            "• `now`\n\n"
+            "🕐 *When?*\n"
+            "e.g. `in 30 mins`, `tomorrow at 3pm`, `25/12 10:00`\n\n"
             "Send /cancel anytime.",
             parse_mode="Markdown",
         )
@@ -1491,11 +1486,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         dt = rmd.parse_datetime(text, cfg.TIMEZONE)
         if dt is None:
             await update.message.reply_text(
-            "🤔 Didn't understand that time. Try:\n"
-            "• `in 30 mins`\n"
-            "• `tomorrow at 3pm`\n"
-            "• `25/12 10:00`\n"
-            "• `now`",
+            "🤔 Didn't understand. Try:\n"
+            "`in 30 mins`, `tomorrow at 3pm`, `25/12 10:00`",
                 parse_mode="Markdown",
             )
             return
