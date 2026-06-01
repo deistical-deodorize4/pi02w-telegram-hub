@@ -595,14 +595,19 @@ async def price_add_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = update.effective_user.id
     if user_id != ALLOWED_USER:
         return
+    log.warning("price_add_start called by user %s", user_id)
     session = _get_session(user_id)
     session["mode"] = "price_add"
     session["form"] = {"name": "", "urls": [], "waiting_for": "name"}
-    await update.message.reply_text(
-        "📦 *Product name?*\n\n"
-        "Send /price_cancel anytime to cancel.",
-        parse_mode="Markdown",
-    )
+    try:
+        await update.message.reply_text(
+            "📦 *Product name?*\n\n"
+            "Send /price_cancel anytime to cancel.",
+            parse_mode="Markdown",
+        )
+        log.warning("price_add_start reply sent OK")
+    except Exception as e:
+        log.error("price_add_start reply FAILED: %s", e)
 
 
 async def price_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
