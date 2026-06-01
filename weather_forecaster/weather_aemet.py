@@ -305,12 +305,16 @@ def _parse_forecast(data: list) -> list:
     parsed = []
     for day in days:
         fecha_str = day.get("fecha", "")
-        # Compute weekday name
-        try:
-            dt = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-            weekday = WEEKDAY_ES[dt.weekday()]
-        except (ValueError, IndexError):
-            weekday = "?"
+        # Compute weekday name — try common AEMET date formats
+        weekday = "?"
+        for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z",
+                     "%d/%m/%Y", "%Y/%m/%d"):
+            try:
+                dt = datetime.strptime(fecha_str, fmt).date()
+                weekday = WEEKDAY_ES[dt.weekday()]
+                break
+            except (ValueError, TypeError):
+                continue
 
         parsed.append({
             "fecha": fecha_str,
@@ -455,11 +459,18 @@ def _severity_to_warning(severity: str) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def _wind_degrees_to_compass(degrees: float) -> str:
-    """Convert wind direction in degrees to 16-point compass bearing.
+def _wind_degrees_to_compass(degrees: float | str) -> str:
+    """Convert wind direction to 16-point compass bearing.
 
-    Returns something like "NE", "SSW", etc.
+    Accepts either numeric degrees or a compass string (``"N"``, ``"NE"``…).
+    Returns something like ``"NE"``, ``"SSW"``, etc.
     """
+    if isinstance(degrees, str):
+        # Already a compass point — validate and return
+        if degrees.upper() in COMPASS_POINTS:
+            return degrees.upper()
+        # Might be "CALMA" or empty
+        return "---"
     if degrees is None or degrees < 0:
         return "---"
     # Shift by half a sector (360/32 = 11.25 degrees) so the 16 sectors are centred
@@ -518,6 +529,9 @@ def _temp_sparkline(values: list[float], width: int = 8) -> str:
 def _get_slot(datos: list, hour: int, key: str = "value", default=None):
     """Extract a value from AEMETs ``dato`` list-of-dicts structure.
 
+    AEMET uses ``periodo`` (2-digit string like ``"09"``) as the time key,
+    but sometimes returns ``hora`` instead.  Try both.
+
     Usage::
 
         _get_slot(temps, 14)          → temperature at 14:00
@@ -525,7 +539,8 @@ def _get_slot(datos: list, hour: int, key: str = "value", default=None):
     """
     for d in datos:
         try:
-            if int(d.get("hora", -1)) == hour:
+            raw = d.get("periodo", d.get("hora", -1))
+            if int(raw) == hour:
                 return d.get(key, default)
         except (ValueError, TypeError):
             continue
@@ -563,7 +578,8 @@ def _midday_sky(datos: list) -> str:
     """Best sky emoji around 14:00."""
     for d in datos:
         try:
-            if int(d.get("hora", -1)) == 14:
+            raw = d.get("periodo", d.get("hora", -1))
+            if int(raw) == 14:
                 return _sky_emoji(str(d.get("value", "")))
         except (ValueError, TypeError):
             continue
@@ -851,8 +867,9 @@ def format_ondemand() -> str | None:
 
         # Row for each hourly entry
         for entry in temps:
+            raw_h = entry.get("periodo", entry.get("hora", 0))
             try:
-                h = int(entry.get("hora", 0))
+                h = int(raw_h)
             except (ValueError, TypeError):
                 h = 0
             t_val = entry.get("value", "")
@@ -892,7 +909,7 @@ def format_ondemand() -> str | None:
             parts = [f"{h:02d}h {t_str}"]
             if feels_str:
                 parts.append(feels_str)
-            parts.append(f"{s_emoji} {s_short}")
+            parts.append(s_emoji)
             parts.append(p_str)
             parts.append(v_str)
             lines.append("  " + " · ".join(parts))
