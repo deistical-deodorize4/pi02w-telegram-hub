@@ -35,6 +35,7 @@ import config as cfg
 from system_monitor import monitor as sysmon
 from weather_forecaster import weather_aemet
 from price_watcher import price_watcher as pw
+from reminder import reminder as rmd
 from utils import log, setup_logging
 
 # ---------------------------------------------------------------------------
@@ -403,6 +404,28 @@ async def price_watch_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         log.error("Price watch job failed: %s", exc)
 
 
+async def reminder_check_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check for due reminders every 30 seconds."""
+    try:
+        due = rmd.get_due_reminders(cfg.TIMEZONE)
+        for r in due:
+            day_name = r.dt.strftime("%A").capitalize()
+            await context.bot.send_message(
+                chat_id=ALLOWED_USER,
+                text=(
+                    f"⏰ *Reminder!*\n"
+                    f"📝 {r.message}\n"
+                    f"🕐 {day_name} {r.dt.strftime('%d/%m at %H:%M')}"
+                ),
+                parse_mode="Markdown",
+            )
+            rmd.mark_done(r.id, cfg.TIMEZONE)
+        if due:
+            rmd.cleanup_old(cfg.TIMEZONE)
+    except Exception as exc:
+        log.error("Reminder check failed: %s", exc)
+
+
 def _schedule_sampling(job_queue) -> None:
     """Start 30-minute sampling aligned to :15 / :45."""
     delay = _seconds_until_sampling_slot()
@@ -430,6 +453,12 @@ def _schedule_price_watch(job_queue) -> None:
     job_queue.run_repeating(price_watch_job, interval=cfg.PRICE_WATCH_INTERVAL_SECONDS, first=delay)
     log.info("Price watch scheduled every %d s (first in %.0fs)",
              cfg.PRICE_WATCH_INTERVAL_SECONDS, delay)
+
+
+def _schedule_reminder_check(job_queue) -> None:
+    """Check for due reminders every 30 seconds."""
+    job_queue.run_repeating(reminder_check_job, interval=30, first=5)
+    log.info("Reminder checker scheduled every 30 s (first in 5 s)")
 
 
 # ---------------------------------------------------------------------------
@@ -505,7 +534,7 @@ MENU_KEYBOARD = ReplyKeyboardMarkup(
         ["🌤 Weather", "🤖 Chatbot"],
         ["📚 Study Log", "💰 Finance Log"],
         ["🖥 Monitor", "📈 Price Watch"],
-        ["🚪 Menu"],
+        ["⏰ Reminder", "🚪 Menu"],
     ],
     resize_keyboard=True,
 )
@@ -1429,6 +1458,84 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await price_handle_message(update, text)
         return
 
+    # ------- Reminder -------
+    if text == "⏰ Reminder":
+        session["mode"] = "reminder_msg"
+        session["form"] = {}
+        await update.message.reply_text(
+            "📝 *What should I remind you about?*",
+            parse_mode="Markdown",
+        )
+        return
+
+    if session["mode"] == "reminder_msg":
+        if not text.strip():
+            await update.message.reply_text("Message can't be empty.")
+            return
+        session["form"]["msg"] = text.strip()
+        session["mode"] = "reminder_time"
+        await update.message.reply_text(
+            "🕐 *When?*\n\n"
+            "Examples:\n"
+            "• `in 30 minutes`\n"
+            "• `tomorrow at 3pm`\n"
+            "• `friday at 9am`\n"
+            "• `25/12 10:00`\n"
+            "• `now`\n\n"
+            "Send /pricecancel anytime.",
+            parse_mode="Markdown",
+        )
+        return
+
+    if session["mode"] == "reminder_time":
+        dt = rmd.parse_datetime(text, cfg.TIMEZONE)
+        if dt is None:
+            await update.message.reply_text(
+                "🤔 Didn't understand that time. Try:\n"
+                "• `in 30 minutes`\n"
+                "• `tomorrow at 3pm`\n"
+                "• `25/12 10:00`\n"
+                "• `now`",
+                parse_mode="Markdown",
+            )
+            return
+
+        if dt < datetime.now():
+            await update.message.reply_text(
+                "⏳ That time is in the past. Pick a future time."
+            )
+            return
+
+        session["form"]["dt"] = dt
+        session["mode"] = "reminder_confirm"
+
+        day_name = dt.strftime("%A").capitalize()
+        await update.message.reply_text(
+            f"⏰ Remind you *{day_name} {dt.strftime('%d/%m at %H:%M')}*?\n"
+            f"📝 {session['form']['msg']}\n\n"
+            "Confirm? (y/n)",
+            parse_mode="Markdown",
+        )
+        return
+
+    if session["mode"] == "reminder_confirm":
+        if text.lower() in ("y", "yes"):
+            msg = session["form"]["msg"]
+            dt = session["form"]["dt"]
+            r = rmd.add_reminder(msg, dt, cfg.TIMEZONE)
+            session["mode"] = "menu"
+            session["form"] = {}
+            await update.message.reply_text(
+                rmd.format_reminder(r),
+                parse_mode="Markdown",
+                reply_markup=MENU_KEYBOARD,
+            )
+        else:
+            session["mode"] = "menu"
+            session["form"] = {}
+            await update.message.reply_text("❌ Cancelled.", reply_markup=MENU_KEYBOARD)
+        return
+
     # ------- Default: show hub menu -------
     session["mode"] = "menu"
     session["history"] = []
@@ -1473,6 +1580,7 @@ def main() -> None:
     _schedule_morning_report(app.job_queue)
     _schedule_daily_report(app.job_queue)
     _schedule_price_watch(app.job_queue)
+    _schedule_reminder_check(app.job_queue)
 
     log.info("🤖 Bot running — polling for updates…")
     app.run_polling()

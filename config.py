@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # ---------------------------------------------------------------------------
 # Project root – resolved from this file's location
@@ -42,6 +43,9 @@ WRITING_OUTPUTS_DIR: Path = PROJECT_ROOT / "writing_corrector" / "outputs"
 
 # Price watch
 PRICE_WATCH_INTERVAL_SECONDS: int = 3600  # hourly checks
+
+# Timezone
+TIMEZONE: ZoneInfo = ZoneInfo("Europe/Madrid")
 
 # ---------------------------------------------------------------------------
 # Environment variables (with optional .env support)
