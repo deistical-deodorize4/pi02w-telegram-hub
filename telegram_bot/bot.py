@@ -504,7 +504,7 @@ MENU_KEYBOARD = ReplyKeyboardMarkup(
     [
         ["🌤 Weather", "🤖 Chatbot"],
         ["📚 Study Log", "💰 Finance Log"],
-        ["🖥 Monitor", "💰 Price Watch"],
+        ["🖥 Monitor", "📈 Price Watch"],
         ["🚪 Menu"],
     ],
     resize_keyboard=True,
@@ -1152,7 +1152,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     # ------- Price Watch sub-menu -------
-    if text == "💰 Price Watch":
+    if text == "📈 Price Watch":
         session["mode"] = "price_menu"
         results = pw.check_all()
         report = pw.format_ondemand(results)

@@ -3,7 +3,10 @@
     {
       "id": "t1000e",
       "name": "SenseCAP T1000-E",
-      "name_keywords": ["SenseCAP T1000-E", "SenseCAP Card Tracker T1000-E"],
+      "name_keywords": [
+        "SenseCAP T1000-E",
+        "SenseCAP Card Tracker T1000-E"
+      ],
       "urls": [
         {
           "site": "seeed",
