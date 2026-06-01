@@ -751,7 +751,19 @@ async def price_handle_add_message(update: Update, text: str) -> bool:
     """Handle a message during the price_add flow. Returns True if handled."""
     user_id = update.effective_user.id
     session = _get_session(user_id)
-    form = session["form"]
+    form = session.get("form", {})
+    log.warning("price_handle_add_message waiting_for=%s", form.get("waiting_for"))
+
+    # Guard: if form is lost (bot restart), reset to menu
+    if "waiting_for" not in form:
+        session["mode"] = "menu"
+        session["form"] = {}
+        await update.message.reply_text(
+            "⏳ Session expired. Start over.\n"
+            "Use /priceadd to add a product.",
+            reply_markup=MENU_KEYBOARD,
+        )
+        return True
 
     # Step 1: waiting for product name
     if form["waiting_for"] == "name":
@@ -886,6 +898,7 @@ async def price_handle_message(update: Update, text: str) -> None:
         return
     session = _get_session(user_id)
     mode = session["mode"]
+    log.warning("price_handle_message mode=%s form=%s", mode, session.get("form"))
 
     if mode == "price_add":
         handled = await price_handle_add_message(update, text)
@@ -968,6 +981,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     text: str = update.message.text  # type: ignore[assignment]
     session = _get_session(user_id)
+    log.warning("handle_message text=%r mode=%s", text, session.get("mode"))
 
     # ------- Menu / Start -------
     if text in ("🚪 Menu", "/start"):
