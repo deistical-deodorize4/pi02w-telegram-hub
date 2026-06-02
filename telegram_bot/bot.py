@@ -35,6 +35,7 @@ from weather_forecaster import weather_aemet
 from price_watcher import price_watcher as pw
 from reminder import reminder as rmd
 from impulse_buy import wish as ibw
+from finance_tracker import budget as bgt
 from utils import log, setup_logging
 
 # ---------------------------------------------------------------------------
@@ -397,6 +398,16 @@ async def daily_report_job(context: ContextTypes.DEFAULT_TYPE) -> None:
             chat_id=ALLOWED_USER,
             text="📊 Pi Daily Report — no data collected today (bot just started).",
         )
+
+    # Month-end budget recap
+    tomorrow = date.today() + timedelta(days=1)
+    if tomorrow.day == 1:
+        recap = bgt.format_recap()
+        if recap:
+            await context.bot.send_message(
+                chat_id=ALLOWED_USER, text=recap, parse_mode="Markdown",
+            )
+
     # Re-schedule next day's report
     _schedule_daily_report(context.job_queue)
 
@@ -595,6 +606,62 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await update.message.reply_text(report, parse_mode="Markdown")
         else:
             await update.message.reply_text("📊 No data yet — try again in a minute.")
+
+
+# ---------------------------------------------------------------------------
+# Budget command
+# ---------------------------------------------------------------------------
+
+
+async def budget_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /budget: set, show, remove budget limits."""
+    user_id = update.effective_user.id
+    if user_id != ALLOWED_USER:
+        await update.message.reply_text("⛔ Unauthorized.")
+        return
+
+    args: list[str] = context.args if context.args else []
+    text = " ".join(args).strip()
+
+    if not text:
+        # No args → show all budgets
+        await update.message.reply_text(bgt.format_status(), parse_mode="Markdown")
+        return
+
+    # /budget rm <category>
+    if text.lower().startswith("rm "):
+        cat = text[3:].strip()
+        if bgt.remove_budget(cat):
+            await update.message.reply_text(f"✅ Removed budget for *{cat}*.", parse_mode="Markdown")
+        else:
+            await update.message.reply_text(f"⚠️ No budget set for *{cat}*.", parse_mode="Markdown")
+        return
+
+    # /budget <category> <amount>  — or just /budget <category> to show one
+    parts = text.rsplit(maxsplit=1)
+    category = parts[0].strip().lower()
+
+    if len(parts) == 2:
+        try:
+            amount = float(parts[1])
+            if amount <= 0:
+                raise ValueError
+            bgt.set_budget(category, amount)
+            status = bgt.format_category_status(category)
+            await update.message.reply_text(
+                f"✅ Budget set!\n{status}",
+                parse_mode="Markdown",
+            )
+        except ValueError:
+            await update.message.reply_text("⚠️ Amount must be a positive number (e.g. `/budget food 300`).", parse_mode="Markdown")
+        return
+
+    # Just category name → show that category
+    status = bgt.format_category_status(category)
+    if status:
+        await update.message.reply_text(status, parse_mode="Markdown")
+    else:
+        await update.message.reply_text(f"⚠️ No budget set for *{category}*. Use `/budget {category} <amount>` to set one.", parse_mode="Markdown")
 
 
 # ---------------------------------------------------------------------------
@@ -1398,9 +1465,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 writer.writerow([today, f["type"], f["category"], f["amount"], f["description"]])
             session["mode"] = "menu"
             session["form"] = {}
+
+            msg = f"✅ Logged: {f['category']} | {float(f['amount']):.2f}€ | {f['type']}"
+
+            # Check budget warning for this category
+            warnings = bgt.get_warnings()
+            cat_warnings = [w for w in warnings if f"*{f['category']}*" in w]
+            if cat_warnings:
+                msg += "\n\n" + "\n".join(cat_warnings)
+
             await update.message.reply_text(
-                f"✅ Logged: {f['category']} | {float(f['amount']):.2f}€ | {f['type']}",
+                msg,
                 reply_markup=MENU_KEYBOARD,
+                parse_mode="Markdown",
             )
         return
 
@@ -1525,6 +1602,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "`/pricetest`    Test a URL\n"
             "`/pricedone`    Finish URLs\n"
             "`/pricereport`  View report\n\n"
+            "🔹 *Finance*\n"
+            "`/budget`       Show/set budget limits\n\n"
             "🔹 *Other*\n"
             "`/wishlist`   Impulse buy history"
         )
@@ -1565,6 +1644,7 @@ def main() -> None:
     app.add_handler(CommandHandler("pricedone", price_done))
     app.add_handler(CommandHandler("cancel", price_cancel))
     app.add_handler(CommandHandler("priceremove", price_remove_start))
+    app.add_handler(CommandHandler("budget", budget_command))
     app.add_handler(CommandHandler("pricetest", price_test_start))
     app.add_handler(CommandHandler("priceedit", price_edit_start))
     app.add_handler(CommandHandler("pricereport", price_report))
