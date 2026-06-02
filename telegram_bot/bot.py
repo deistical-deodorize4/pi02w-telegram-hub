@@ -360,7 +360,7 @@ async def morning_report_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await context.bot.send_message(
             chat_id=ALLOWED_USER,
-            text="☀️ Buenos días — AEMET data unavailable this morning.",
+            text="☀️ Good morning — AEMET data unavailable this morning.",
         )
     # Check for impulse buy wishes due for re-evaluation
     try:
@@ -368,8 +368,8 @@ async def morning_report_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         for w in due:
             keyboard = InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("✅ Sí, comprar", callback_data=f"impulse_yes_{w.id}"),
-                    InlineKeyboardButton("❌ No, paso", callback_data=f"impulse_no_{w.id}"),
+                    InlineKeyboardButton("✅ Yes, buy it", callback_data=f"impulse_yes_{w.id}"),
+                    InlineKeyboardButton("❌ No, pass", callback_data=f"impulse_no_{w.id}"),
                 ]
             ])
             await context.bot.send_message(
@@ -513,10 +513,10 @@ async def startup_notification(app: Application) -> None:
 
     if uptime_h < 0.17:  # less than ~10 minutes
         icon = "⚠️"
-        note = "Posible reinicio/corte de luz"
+        note = "Possible power outage/restart"
     else:
         icon = "ℹ️"
-        note = "Bot reiniciado (soft)"
+        note = "Bot restarted (soft)"
 
     msg = (
         f"{icon} *pi02w Hub*\n"
@@ -841,13 +841,13 @@ async def impulse_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         w = ibw.get_wish_by_id(wish_id)
         ibw.mark_kept(wish_id)
         name = f" *{w.text}*" if w else ""
-        await query.edit_message_text(f"✅ ¡A comprar{name}! 🎉")
+        await query.edit_message_text(f"✅ Go for it{name}! 🎉")
     elif data.startswith("impulse_no_"):
         wish_id = data.replace("impulse_no_", "")
         w = ibw.get_wish_by_id(wish_id)
         ibw.mark_dropped(wish_id)
         name = f" *{w.text}*" if w else ""
-        await query.edit_message_text(f"❌ Bien hecho{name} — impulso esquivado.")
+        await query.edit_message_text(f"❌ Well done{name} — impulse dodged.")
 
 
 async def price_remove_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1636,7 +1636,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         session["mode"] = "impulse_msg"
         session["form"] = {}
         await update.message.reply_text(
-            "💸 *¿Qué quieres comprar?*\n\n"
+            "💸 *What do you want to buy?*\n\n"
             "Send /cancel anytime.",
             parse_mode="Markdown",
         )
@@ -1650,8 +1650,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         session["form"] = {"wish_id": w.id}
         session["mode"] = "impulse_eval_uses"
         await update.message.reply_text(
-            f"✅ Guardado! *{w.text}*\n\n"
-            f"Vamos a evaluarlo:\n\n"
+            f"✅ Saved! *{w.text}*\n\n"
+            f"Let's evaluate it:\n\n"
             f"{ibw.EVAL_QUESTIONS[0][1]}",
             parse_mode="Markdown",
         )
@@ -1674,7 +1674,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             valid = ["0-1", "2-5", "6+"]
             if text.strip() not in valid and text.strip() not in ("0-1 veces", "2-5 veces", "6+ veces"):
                 await update.message.reply_text(
-                    "Responde: `0-1` `2-5` o `6+`",
+                    "Reply: `0-1` `2-5` or `6+`",
                     parse_mode="Markdown",
                 )
                 return
@@ -1684,8 +1684,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
 
         if session["mode"] == "impulse_eval_alternative":
-            if text.strip().lower() not in ("sí", "no"):
-                await update.message.reply_text("Responde *Sí* o *No*.", parse_mode="Markdown")
+            if text.strip().lower() not in ("yes", "no"):
+                await update.message.reply_text("Reply *Yes* or *No*.", parse_mode="Markdown")
                 return
             eval_data["alternative"] = text.strip()
             session["mode"] = "impulse_eval_situations"
@@ -1694,7 +1694,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
         if session["mode"] == "impulse_eval_situations":
             if len(text.strip()) < 5:
-                await update.message.reply_text("Describe al menos una situación brevemente.")
+                await update.message.reply_text("Describe at least one situation briefly.")
                 return
             eval_data["situations"] = text.strip()
             session["mode"] = "impulse_eval_money"
@@ -1702,8 +1702,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
 
         if session["mode"] == "impulse_eval_money":
-            if text.strip().lower() not in ("sí", "no"):
-                await update.message.reply_text("Responde *Sí* o *No*.", parse_mode="Markdown")
+            if text.strip().lower() not in ("yes", "no"):
+                await update.message.reply_text("Reply *Yes* or *No*.", parse_mode="Markdown")
                 return
             eval_data["money"] = text.strip()
 

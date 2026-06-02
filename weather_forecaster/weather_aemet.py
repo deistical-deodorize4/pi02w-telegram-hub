@@ -12,7 +12,7 @@ New in v2:
   - UV Index from AEMET specific prediction endpoint
   - Weather warnings (avisos) for Aragón via CAP endpoint
   - Unicode temp sparkline for visual temperature trend
-  - Weekday names (lun/mar/mié/jue/vie/sáb/dom) in forecast
+  - Weekday names (Mon/Tue/Wed/Thu/Fri/Sat/Sun) in forecast
   - Telegram Markdown formatting in morning brief
   - Richer on-demand display
 """
@@ -45,24 +45,24 @@ from config import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 SKY_CODES: dict[str, str] = {
-    "1": "☀️ Despejado",
-    "2": "🌤 Poco nuboso",
-    "3": "⛅ Intervalos nubosos",
-    "4": "☁️ Nuboso",
-    "5": "☁️ Muy nuboso",
-    "6": "🌧 Cubierto",
-    "7": "🌦 Lluvia débil",
-    "11": "🌧 Lluvia moderada",
-    "12": "🌧 Lluvia fuerte",
-    "13": "⛈ Chubascos",
-    "14": "🌧 Chubascos fuertes",
-    "15": "⛈ Tormenta",
-    "16": "🌨 Nieve",
-    "17": "🌨 Nieve moderada",
-    "18": "🌨 Nieve fuerte",
-    "19": "🌫 Bruma",
-    "20": "🌫 Niebla",
-    "21": "🌫 Calima",
+    "1": "☀️ Clear",
+    "2": "🌤 Mostly clear",
+    "3": "⛅ Partly cloudy",
+    "4": "☁️ Cloudy",
+    "5": "☁️ Very cloudy",
+    "6": "🌧 Overcast",
+    "7": "🌦 Light rain",
+    "11": "🌧 Moderate rain",
+    "12": "🌧 Heavy rain",
+    "13": "⛈ Showers",
+    "14": "🌧 Heavy showers",
+    "15": "⛈ Thunderstorm",
+    "16": "🌨 Snow",
+    "17": "🌨 Moderate snow",
+    "18": "🌨 Heavy snow",
+    "19": "🌫 Haze",
+    "20": "🌫 Fog",
+    "21": "🌫 Dust haze",
 }
 
 SKY_SHORT: dict[str, str] = {
@@ -86,23 +86,23 @@ SKY_SHORT: dict[str, str] = {
     "21": "🌫",
 }
 
-WEEKDAY_ES: list[str] = [
-    "lun", "mar", "mié", "jue", "vie", "sáb", "dom",
+WEEKDAY_EN: list[str] = [
+    "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
 ]
 
 UV_LEVELS: list[tuple[int, str]] = [
-    (0, "Bajo"),
-    (3, "Moderado"),
-    (6, "Alto"),
-    (8, "Muy Alto"),
-    (11, "Extremo"),
+    (0, "Low"),
+    (3, "Moderate"),
+    (6, "High"),
+    (8, "Very High"),
+    (11, "Extreme"),
 ]
 
 WARNING_LEVELS: dict[str, tuple[str, str]] = {
-    "1": ("🟢", "Verde (sin riesgo)"),
-    "2": ("🟡", "Amarillo"),
-    "3": ("🟠", "Naranja"),
-    "4": ("🔴", "Rojo"),
+    "1": ("🟢", "Green (no risk)"),
+    "2": ("🟡", "Yellow"),
+    "3": ("🟠", "Orange"),
+    "4": ("🔴", "Red"),
 }
 
 # Compass rose: 16 points
@@ -311,7 +311,7 @@ def _parse_forecast(data: list) -> list:
                      "%d/%m/%Y", "%Y/%m/%d"):
             try:
                 dt = datetime.strptime(fecha_str, fmt).date()
-                weekday = WEEKDAY_ES[dt.weekday()]
+                weekday = WEEKDAY_EN[dt.weekday()]
                 break
             except (ValueError, TypeError):
                 continue
@@ -370,7 +370,7 @@ def _parse_uvi(raw: dict[str, Any] | None) -> dict[str, Any] | None:
     except (ValueError, TypeError):
         return None
 
-    level = "Desconocido"
+    level = "Unknown"
     for threshold, label in UV_LEVELS:
         if uvi >= threshold:
             level = label
@@ -430,7 +430,7 @@ def _parse_warnings(raw: dict[str, Any] | None) -> list[dict[str, Any]]:
         level_icon, level_label = _severity_to_warning(severity)
 
         alerts.append({
-            "event": info.get("event", "Fenómeno adverso"),
+            "event": info.get("event", "Adverse weather"),
             "level_icon": level_icon,
             "level_label": level_label,
             "onset": info.get("onset", ""),
@@ -445,11 +445,11 @@ def _parse_warnings(raw: dict[str, Any] | None) -> list[dict[str, Any]]:
 def _severity_to_warning(severity: str) -> tuple[str, str]:
     """Map CAP severity to AEMET-style colour label."""
     mapping = {
-        "extreme": ("🔴", "Rojo"),
-        "severe": ("🟠", "Naranja"),
-        "moderate": ("🟡", "Amarillo"),
-        "minor": ("🟢", "Verde"),
-        "unknown": ("⚪", "Desconocido"),
+        "extreme": ("🔴", "Red"),
+        "severe": ("🟠", "Orange"),
+        "moderate": ("🟡", "Yellow"),
+        "minor": ("🟢", "Green"),
+        "unknown": ("⚪", "Unknown"),
     }
     return mapping.get(severity, mapping["unknown"])
 
@@ -595,17 +595,17 @@ def _sky_short(code: str) -> str:
 
 
 def _weekday_name(fecha_str: str) -> str:
-    """Convert '2025-05-31' -> 'sáb'."""
+    """Convert '2025-05-31' -> 'Sat'."""
     try:
         dt = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-        return WEEKDAY_ES[dt.weekday()]
+        return WEEKDAY_EN[dt.weekday()]
     except (ValueError, IndexError):
         return "?"
 
 
 def _uv_label(uvi: float) -> str:
     """Return human-friendly UV level string (highest matching threshold)."""
-    label = "Desconocido"
+    label = "Unknown"
     for threshold, l in reversed(UV_LEVELS):
         if uvi >= threshold:
             return l
@@ -676,7 +676,7 @@ def format_morning_report() -> str | None:
     now = datetime.now()
 
     # ── Header ────────────────────────────────────────────────────────────
-    lines.append("☀️ *Buenos días — Zaragoza*")
+    lines.append("☀️ *Good morning — Zaragoza*")
     if station:
         lines.append(f"📍 {station} · AEMET")
     cache_note = _cache_age_line()
@@ -690,7 +690,7 @@ def format_morning_report() -> str | None:
         cur = _parse_current(current)
         time_str = now.strftime("%H:%M")
         lines.append(
-            f"🌡 *Ahora* ({time_str}): {cur['temp']:.1f}°C · "
+            f"🌡 *Now* ({time_str}): {cur['temp']:.1f}°C · "
             f"💧 {cur['humidity']:.0f}% · 💨 {cur['wind_speed']:.1f} km/h"
         )
         lines.append("")
@@ -717,7 +717,7 @@ def format_morning_report() -> str | None:
         lines.append(header)
 
         # Morning / afternoon / evening slots
-        slots = {"Mañana": 9, "Tarde": 14, "Noche": 20}
+        slots = {"Morning": 9, "Afternoon": 14, "Evening": 20}
         for label, h in slots.items():
             t = _get_slot(temps, h)
             s = _get_slot_str(sky, h, "value")
@@ -755,7 +755,7 @@ def format_morning_report() -> str | None:
 
         # ── Warnings ──────────────────────────────────────────────────────
         if warnings:
-            lines.append("⚠️ *Avisos activos*")
+            lines.append("⚠️ *Active warnings*")
             for w in warnings[:3]:  # max 3 in the brief
                 icon = w["level_icon"]
                 event = w["event"]
@@ -765,7 +765,7 @@ def format_morning_report() -> str | None:
                 time_range = f" {onset}–{expires}" if onset and expires else ""
                 lines.append(f"  {icon} {event} · {level}{time_range}")
             if len(warnings) > 3:
-                lines.append(f"  … y {len(warnings) - 3} más")
+                lines.append(f"  … and {len(warnings) - 3} more")
             lines.append("")
 
     return "\n".join(lines)
@@ -807,7 +807,7 @@ def format_ondemand() -> str | None:
     if current:
         cur = _parse_current(current)
         lines.append(
-            f"🌡 *Ahora* ({now.strftime('%H:%M')}): {cur['temp']:.1f}°C · "
+            f"🌡 *Now* ({now.strftime('%H:%M')}): {cur['temp']:.1f}°C · "
             f"💧 {cur['humidity']:.0f}% · 💨 {cur['wind_speed']:.1f} km/h"
         )
         lines.append("")
@@ -826,7 +826,7 @@ def format_ondemand() -> str | None:
             icon = w["level_icon"]
             event = w["event"]
             level = w["level_label"]
-            lines.append(f"  {icon} {event} · Nivel {level}")
+            lines.append(f"  {icon} {event} · Level {level}")
             if w.get("headline"):
                 lines.append(f"     {w['headline']}")
             onset = _format_time(w["onset"]) if w.get("onset") else ""

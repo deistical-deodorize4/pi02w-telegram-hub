@@ -116,16 +116,16 @@ def add_wish(text: str) -> WishItem:
 # ---------------------------------------------------------------------------
 
 EVAL_QUESTIONS = [
-    ("uses", "¿Cuántas veces al mes crees que lo usarías?\n\n0-1 veces / 2-5 veces / 6+ veces"),
-    ("alternative", "¿Ya tienes algo que haga lo mismo o similar?\n\nSí / No"),
-    ("situations", "Describe 3 situaciones concretas donde lo usarías este mes (una frase corta):"),
-    ("money", "Si tuvieras el dinero ahora mismo, ¿preferirías quedártelo?\n\nSí / No"),
+    ("uses", "How many times a month do you think you'd use it?\n\n0-1 times / 2-5 times / 6+ times"),
+    ("alternative", "Do you already have something that does the same or similar?\n\nYes / No"),
+    ("situations", "Describe 3 concrete situations where you'd use it this month (one short phrase):"),
+    ("money", "If you had the money right now, would you rather keep it?\n\nYes / No"),
 ]
 
 EVAL_RESPONSES: dict[str, list[str]] = {
     "uses": ["0-1", "2-5", "6+"],
-    "alternative": ["sí", "no"],
-    "money": ["sí", "no"],
+    "alternative": ["yes", "no"],
+    "money": ["yes", "no"],
 }
 
 
@@ -239,21 +239,21 @@ def mark_asked(wish_id: str) -> None:
 
 _EMOJI_MAP = {
     "uses": {"0-1": "🟡", "2-5": "🟢", "6+": "💚"},
-    "alternative": {"sí": "🟡", "no": "🟢"},
-    "money": {"sí": "🟡", "no": "🟢"},
+    "alternative": {"yes": "🟡", "no": "🟢"},
+    "money": {"yes": "🟡", "no": "🟢"},
 }
 
 
 def format_evaluation(w: WishItem) -> str:
     """Full evaluation verdict for a wish."""
     if not w.evaluation or not w.result:
-        return f"💸 *{w.text}*\n_Aún no evaluado._"
+        return f"💸 *{w.text}*\n_Not yet evaluated._"
 
     e = w.evaluation
     score = _calc_score(e)
     days = _recheck_days(w.result)
 
-    lines = [f"💸 *Evaluación: {w.text}*", "───", ""]
+    lines = [f"💸 *Evaluation: {w.text}*", "───", ""]
 
     uses_emoji = _EMOJI_MAP["uses"].get(e.get("uses", ""), "⚪")
     alt_emoji = _EMOJI_MAP["alternative"].get(e.get("alternative", "").strip().lower(), "⚪")
@@ -261,18 +261,18 @@ def format_evaluation(w: WishItem) -> str:
     sit_ok = len(e.get("situations", "").strip()) >= 15
     sit_emoji = "✅" if sit_ok else "⚠️"
 
-    lines.append(f"Uso mensual:    {e.get('uses', '?')}  {uses_emoji}")
-    lines.append(f"Alternativa:    {e.get('alternative', '?')}  {alt_emoji}")
-    lines.append(f"Situaciones:    {sit_emoji}")
-    lines.append(f"Preferirías el\ndinero?:        {e.get('money', '?')}  {money_emoji}")
+    lines.append(f"Monthly use:    {e.get('uses', '?')}  {uses_emoji}")
+    lines.append(f"Alternative:    {e.get('alternative', '?')}  {alt_emoji}")
+    lines.append(f"Situations:    {sit_emoji}")
+    lines.append(f"Keep the\nmoney?:        {e.get('money', '?')}  {money_emoji}")
     lines.append("")
 
     if w.result == "buy":
-        lines.append(f"📊 *Resultado: COMPRAR* ✅ ({score}/9)")
-        lines.append(f"Te preguntaré de nuevo en {days} días.")
+        lines.append(f"📊 *Result: BUY* ✅ ({score}/9)")
+        lines.append(f"I'll ask again in {days} days.")
     else:
-        lines.append(f"📊 *Resultado: ESPERAR* ⏳ ({score}/9)")
-        lines.append(f"Te preguntaré de nuevo en {days} días.")
+        lines.append(f"📊 *Result: WAIT* ⏳ ({score}/9)")
+        lines.append(f"I'll ask again in {days} days.")
 
     return "\n".join(lines)
 
@@ -286,7 +286,7 @@ def format_wishlist() -> str | None:
         icon = {"pending": "⏳", "kept": "✅", "dropped": "❌"}.get(w.status, "❓")
         result_tag = ""
         if w.result and w.status == "pending":
-            result_tag = " 🏷️COMPRAR🏷️" if w.result == "buy" else " ⏳ESPERAR⏳"
+            result_tag = " 🏷️BUY🏷️" if w.result == "buy" else " ⏳WAIT⏳"
         lines.append(f"{icon} {w.text}{result_tag}")
     return "\n".join(lines)
 
@@ -301,11 +301,11 @@ def format_recheck_prompt(w: WishItem) -> str:
         date_str = w.created
 
     lines = [
-        f"💸 *Re-evaluación: {w.text}*",
+        f"💸 *Re-evaluation: {w.text}*",
         "───",
         "",
-        f"El día {date_str} dijiste que querías esto.",
-        "Vamos a reevaluar:",
+        f"On {date_str} you said you wanted this.",
+        "Let's re-evaluate:",
         "",
     ]
 
@@ -317,18 +317,18 @@ def format_recheck_prompt(w: WishItem) -> str:
         sit_ok = len(e.get("situations", "").strip()) >= 15
         sit_emoji = "✅" if sit_ok else "⚠️"
 
-        lines.append(f"📋 *Lo que respondiste:*")
-        lines.append(f"  Uso mensual:    {e.get('uses', '?')}  {uses_emoji}")
-        lines.append(f"  Alternativa:    {e.get('alternative', '?')}  {alt_emoji}")
-        lines.append(f"  Situaciones:    {sit_emoji}")
-        lines.append(f"  Preferirías el dinero?:  {e.get('money', '?')}  {money_emoji}")
+        lines.append(f"📋 *Your answers:*")
+        lines.append(f"  Monthly use:    {e.get('uses', '?')}  {uses_emoji}")
+        lines.append(f"  Alternative:    {e.get('alternative', '?')}  {alt_emoji}")
+        lines.append(f"  Situations:    {sit_emoji}")
+        lines.append(f"  Keep the money?:  {e.get('money', '?')}  {money_emoji}")
 
         if w.result:
             score = _calc_score(e)
-            tag = "🏷️COMPRAR🏷️" if w.result == "buy" else "⏳ESPERAR⏳"
-            lines.append(f"  Veredicto:      {tag} ({score}/9)")
+            tag = "🏷️BUY🏷️" if w.result == "buy" else "⏳WAIT⏳"
+            lines.append(f"  Verdict:        {tag} ({score}/9)")
 
     lines.append("")
-    lines.append("¿Todavía lo quieres?")
+    lines.append("Still want it?")
 
     return "\n".join(lines)

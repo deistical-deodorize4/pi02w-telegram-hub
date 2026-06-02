@@ -24,8 +24,8 @@ class PriceScrapeError(Exception):
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-def _headers() -> dict[str, str]:
-    return {
+def _headers(cookies: dict[str, str] | None = None) -> dict[str, str]:
+    h = {
         "User-Agent": (
             "Mozilla/5.0 (X11; Linux aarch64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -33,11 +33,14 @@ def _headers() -> dict[str, str]:
         ),
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
     }
+    if cookies:
+        h["Cookie"] = "; ".join(f"{k}={v}" for k, v in cookies.items())
+    return h
 
 
-def _fetch(url: str, timeout: int = 25) -> str:
+def _fetch(url: str, timeout: int = 25, cookies: dict[str, str] | None = None) -> str:
     try:
-        resp = requests.get(url, timeout=timeout, headers=_headers())
+        resp = requests.get(url, timeout=timeout, headers=_headers(cookies))
         resp.raise_for_status()
         return resp.text
     except requests.RequestException as exc:
@@ -107,9 +110,30 @@ def scrape_tiendatec(url: str, timeout: int = 25) -> tuple[float, str, str, str 
     return price, currency, "TiendaTec", name
 
 
+def _amazon_headers(url: str) -> dict[str, str]:
+    """Return headers + cookies to force local currency on Amazon domains."""
+    cookies = {}
+    domain = url.lower()
+    if ".es" in domain:
+        cookies["i18n-prefs"] = "EUR"
+    elif ".de" in domain or ".fr" in domain or ".it" in domain:
+        cookies["i18n-prefs"] = "EUR"
+    elif ".co.uk" in domain or ".uk" in domain:
+        cookies["i18n-prefs"] = "GBP"
+    elif ".co.jp" in domain:
+        cookies["i18n-prefs"] = "JPY"
+    else:
+        cookies["i18n-prefs"] = "USD"
+    return _headers(cookies)
+
+
 def scrape_amazon(url: str, timeout: int = 30) -> tuple[float, str, str, str | None]:
-    """Amazon — price from a-offscreen span, name from productTitle."""
-    html = _fetch(url, timeout)
+    """Amazon — price from a-offscreen span, name from productTitle.
+
+    Includes currency cookie to avoid auto-converted prices on
+    regional Amazon sites (e.g. amazon.es showing USD to US IPs).
+    """
+    html = _fetch(url, timeout, cookies=_amazon_headers(url))
     name = _extract_name(html)
 
     # Price from a-offscreen span
@@ -136,7 +160,9 @@ def scrape_amazon(url: str, timeout: int = 30) -> tuple[float, str, str, str | N
     elif "£" in raw or "GBP" in raw.upper():
         currency = "GBP"
     else:
-        currency = "EUR"  # default for .es
+        # Fallback: use cookie preference
+        ck = _amazon_headers(url).get("Cookie", "")
+        currency = "EUR" if "EUR" in ck else "USD"
 
     return price, currency, "Amazon", name
 
