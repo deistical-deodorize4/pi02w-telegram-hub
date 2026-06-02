@@ -21,8 +21,6 @@ from zoneinfo import ZoneInfo
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
-from google import genai
-from google.genai import types
 
 # ---------------------------------------------------------------------------
 # Ensure project root is on sys.path (for direct `python bot.py` invocation)
@@ -48,17 +46,11 @@ setup_logging(logging.WARNING)
 # Credentials & guards
 # ---------------------------------------------------------------------------
 TOKEN = cfg.TELEGRAM_BOT_TOKEN
-GEMINI_KEY = cfg.GEMINI_API_KEY
 ALLOWED_USER = cfg.TELEGRAM_USER_ID
 
 if not TOKEN:
     log.error("TELEGRAM_BOT_TOKEN not set — bot cannot start.")
     raise SystemExit(1)
-if not GEMINI_KEY:
-    log.error("GEMINI_API_KEY not set — chatbot will fail.")
-    raise SystemExit(1)
-
-client = genai.Client(api_key=GEMINI_KEY)
 
 # ---------------------------------------------------------------------------
 # Daily stats collector
@@ -553,28 +545,13 @@ FINANCE_STEPS = [
 # ---------------------------------------------------------------------------
 MENU_KEYBOARD = ReplyKeyboardMarkup(
     [
-        ["🌤 Weather", "🤖 Chatbot"],
-        ["📚 Study Log", "💰 Finance Log"],
-        ["🖥 Monitor", "📈 Price Watch"],
-        ["⏰ Reminder", "💸 Impulse Buy", "🚪 Menu"],
-        ["📋 Commands"],
+        ["🌤 Weather", "📚 Study Log"],
+        ["💰 Finance Log", "🖥 Monitor"],
+        ["📈 Price Watch", "⏰ Reminder"],
+        ["💸 Impulse Buy", "📋 Commands"],
     ],
     resize_keyboard=True,
 )
-
-# ---------------------------------------------------------------------------
-# Prompt helpers
-# ---------------------------------------------------------------------------
-BASE_PROMPT = """You are a helpful personal assistant running on a Raspberry Pi Zero 2.
-You are concise, friendly, and precise.
-When asked technical questions, especially about Python, ML, or Raspberry Pi,
-prioritize practical and lightweight solutions."""
-
-
-def _get_prompt() -> str:
-    today = datetime.now().strftime("%A, %d %B %Y, %H:%M")
-    return f"{BASE_PROMPT}\nCurrent date and time: {today}."
-
 
 def _get_session(user_id: int) -> dict[str, Any]:
     if user_id not in user_sessions:
@@ -1301,18 +1278,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     session = _get_session(user_id)
     log.warning("handle_message text=%r mode=%s", text, session.get("mode"))
 
-    # ------- Menu / Start -------
-    if text in ("🚪 Menu", "/start"):
-        session["mode"] = "menu"
-        session["history"] = []
-        session["form"] = {}
-        await update.message.reply_text(
-"🤖 *pi02w Hub*\nSelect an option:",
-            parse_mode="Markdown",
-            reply_markup=MENU_KEYBOARD,
-        )
-        return
-
     # ------- Weather (AEMET) -------
     if text == "🌤 Weather":
         await update.message.reply_text("⏳ Fetching AEMET data…")
@@ -1326,46 +1291,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 )
         except Exception as exc:
             await update.message.reply_text(f"❌ AEMET error: {exc}")
-        return
-
-    # ------- Chatbot -------
-    if text == "🤖 Chatbot":
-        session["mode"] = "chatbot"
-        session["history"] = []
-        await update.message.reply_text(
-            "💬 Chatbot active. Type your message.\nSend *🚪 Menu* to exit.",
-            parse_mode="Markdown",
-        )
-        return
-
-    if session["mode"] == "chatbot":
-        session["history"].append({"role": "user", "parts": [{"text": text}]})
-
-        for attempt in range(3):
-            try:
-                response = client.models.generate_content(
-                    model=cfg.GEMINI_MODEL,
-                    config=types.GenerateContentConfig(
-                        system_instruction=_get_prompt(),
-                        max_output_tokens=300,
-                    ),
-                    contents=session["history"][-cfg.CHAT_HISTORY_CAP:],
-                )
-                break
-            except Exception as exc:
-                if "503" in str(exc) and attempt < 2:
-                    time.sleep(2)
-                else:
-                    await update.message.reply_text(f"Error: {exc}")
-                    return
-
-        reply = response.text or "No response"
-        session["history"].append({"role": "model", "parts": [{"text": reply}]})
-
-        # Cap history to prevent memory bloat on Pi Zero 2W
-        session["history"] = session["history"][-cfg.CHAT_HISTORY_CAP * 2 :]
-
-        await update.message.reply_text(reply)
         return
 
     # ------- Study Log -------
