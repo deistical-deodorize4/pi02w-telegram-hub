@@ -637,7 +637,7 @@ def _format_date_short(iso_str: str) -> str:
                 "%Y-%m-%d"):
         try:
             dt = datetime.strptime(iso_str, fmt)
-            return dt.strftime("%d/%m")
+            return dt.strftime("%d-%m")
         except ValueError:
             continue
     return iso_str[:10] if len(iso_str) >= 10 else iso_str

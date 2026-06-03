@@ -73,13 +73,24 @@ def list_budgets() -> dict[str, float]:
 # Spending check
 # ---------------------------------------------------------------------------
 
-def _current_month_prefix() -> str:
-    return datetime.now().strftime("%Y-%m")
+def _current_month_display() -> str:
+    """Return current month/year in DD-MM-YYYY format (1st of month)."""
+    now = datetime.now()
+    return now.strftime("%m-%Y")
+
+
+def _in_current_month(date_str: str) -> bool:
+    """Check if a DD-MM-YYYY date string falls in the current month."""
+    try:
+        dt = datetime.strptime(date_str, "%d-%m-%Y")
+        now = datetime.now()
+        return dt.month == now.month and dt.year == now.year
+    except (ValueError, TypeError):
+        return False
 
 
 def get_spending(category: str) -> float:
     """Return total spending (€, positive) for *category* this month."""
-    prefix = _current_month_prefix()
     total = 0.0
     try:
         with FINANCE_LOG.open(newline="") as f:
@@ -87,7 +98,7 @@ def get_spending(category: str) -> float:
             for row in reader:
                 if len(row) < 4:
                     continue
-                if not row[0].startswith(prefix):
+                if not _in_current_month(row[0]):
                     continue
                 if row[2].strip().lower() != category.strip().lower():
                     continue
@@ -215,7 +226,7 @@ def format_recap() -> str | None:
     if not all_status:
         return None
 
-    lines = ["📊 *Monthly Budget Recap*", f"📅 {_current_month_prefix()}", "───", ""]
+    lines = ["📊 *Monthly Budget Recap*", f"📅 {_current_month_display()}", "───", ""]
     total_limit = 0.0
     total_spent = 0.0
 

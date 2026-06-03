@@ -441,7 +441,7 @@ async def reminder_check_job(context: ContextTypes.DEFAULT_TYPE) -> None:
                 text=(
                     f"⏰ *Reminder!*\n"
                     f"📝 {r.message}\n"
-                    f"🕐 {day_name} {r.dt.strftime('%d/%m at %H:%M')}"
+                    f"🕐 {day_name} {r.dt.strftime('%d-%m at %H:%M')}"
                 ),
                 parse_mode="Markdown",
             )
@@ -1472,7 +1472,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(STUDY_STEPS[len(session["form"])][1])
         else:
             f = session["form"]
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = datetime.now().strftime("%d-%m-%Y")
             file_exists = cfg.STUDY_LOG.exists()
             with cfg.STUDY_LOG.open("a", newline="") as csvfile:
                 writer = csv.writer(csvfile)
@@ -1525,7 +1525,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(FINANCE_STEPS[len(session["form"])][1])
         else:
             f = session["form"]
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = datetime.now().strftime("%d-%m-%Y")
             file_exists = cfg.FINANCE_LOG.exists()
             with cfg.FINANCE_LOG.open("a", newline="") as csvfile:
                 writer = csv.writer(csvfile)

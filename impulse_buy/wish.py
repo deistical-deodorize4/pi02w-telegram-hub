@@ -296,7 +296,7 @@ def format_recheck_prompt(w: WishItem) -> str:
     # Format creation date nicely
     try:
         dt = datetime.fromisoformat(w.created)
-        date_str = dt.strftime("%d/%m/%Y")
+        date_str = dt.strftime("%d-%m-%Y")
     except (ValueError, TypeError):
         date_str = w.created
 

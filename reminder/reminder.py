@@ -308,7 +308,7 @@ def format_reminder(r: Reminder) -> str:
     return (
         f"⏰ *Reminder set*\n"
         f"📝 {r.message}\n"
-        f"🕐 {day} {r.dt.strftime('%d/%m at %H:%M')}"
+        f"🕐 {day} {r.dt.strftime('%d-%m at %H:%M')}"
     )
 
 
