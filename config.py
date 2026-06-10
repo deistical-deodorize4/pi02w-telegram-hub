@@ -94,6 +94,7 @@ AEMET_UVI_LOCALIDAD: str = "Zaragoza"      # Localidad name in UV index response
 # Printer (raw TCP/JetDirect – no CUPS dependencies)
 # ---------------------------------------------------------------------------
 PRINTER_ADDR: str = os.environ.get("PRINTER_ADDR", "")
+PRINTER_MAC: str = os.environ.get("PRINTER_MAC", "")
 
 # ---------------------------------------------------------------------------
 # Ensure essential directories exist
