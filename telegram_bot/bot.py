@@ -1945,7 +1945,7 @@ def main() -> None:
     _schedule_daily_report(app.job_queue)
     _schedule_price_watch(app.job_queue)
     _schedule_reminder_check(app.job_queue)
-    job_queue.run_repeating(lens_expiry_job, interval=3600, first=30)
+    app.job_queue.run_repeating(lens_expiry_job, interval=3600, first=30)
 
     log.info("🤖 Bot running — polling for updates…")
     app.run_polling()
