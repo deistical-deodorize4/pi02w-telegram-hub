@@ -1616,7 +1616,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     # ------- Monitor -------
-    if text in ("🖥 Monitor", "/monitor"):
+    if text in ("🕵️ Monitor", "/monitor"):
         try:
             report = sysmon.get_report()
             await update.message.reply_text(report)
@@ -1667,7 +1667,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     # ------- Reminder -------
-    if text == "⏰ Reminder":
+    if text == "📢 Reminder":
         session["mode"] = "reminder_msg"
         session["form"] = {}
         await update.message.reply_text(
