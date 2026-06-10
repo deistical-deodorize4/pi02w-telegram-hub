@@ -98,6 +98,11 @@ PRINTER_MAC: str = os.environ.get("PRINTER_MAC", "")
 PRINTER_NAME: str = os.environ.get("PRINTER_NAME", "HP_Envy_6400")
 
 # ---------------------------------------------------------------------------
+# Lens tracker
+# ---------------------------------------------------------------------------
+LENS_DATA: Path = DATA_DIR / "lens_tracker.json"
+
+# ---------------------------------------------------------------------------
 # Ensure essential directories exist
 # ---------------------------------------------------------------------------
 TEMP_DIR.mkdir(parents=True, exist_ok=True)

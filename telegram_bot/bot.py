@@ -37,6 +37,7 @@ from reminder import reminder as rmd
 from impulse_buy import wish as ibw
 from finance_tracker import budget as bgt
 from study_tracker import dashboard as stdash
+from lens_tracker import tracker as lens
 from telegram_bot import printer as prn
 from utils import log, setup_logging
 
@@ -562,7 +563,7 @@ MENU_KEYBOARD = ReplyKeyboardMarkup(
         ["💰 Finance Log", "🖥 Monitor"],
         ["📈 Price Watch", "⏰ Reminder"],
         ["💸 Impulse Buy", "📋 Commands"],
-        ["🖨 Print"],
+        ["🖨 Print", "👁 Lenses"],
     ],
     resize_keyboard=True,
 )
@@ -1407,6 +1408,44 @@ async def price_handle_message(update: Update, text: str) -> None:
         return
 
 # ---------------------------------------------------------------------------
+# Lens Tracker
+# ---------------------------------------------------------------------------
+
+
+async def lens_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    if user_id != ALLOWED_USER:
+        return
+    session = _get_session(user_id)
+    session["mode"] = "lens"
+    session["form"] = {}
+    await update.message.reply_text(lens.status(cfg.LENS_DATA), parse_mode="Markdown")
+
+
+async def lens_refresh(update: Update, text: str) -> None:
+    if text == "in":
+        ok, msg = lens.start_session(cfg.LENS_DATA)
+        await update.message.reply_text(f"{'✅' if ok else '❌'} {msg}", parse_mode="Markdown")
+    elif text == "out":
+        ok, msg, _ = lens.stop_session(cfg.LENS_DATA)
+        await update.message.reply_text(f"{'✅' if ok else '❌'} {msg}", parse_mode="Markdown")
+    else:
+        text = text.strip().lower()
+        if text in ("new", "fresh"):
+            ok, msg = lens.new_pair(cfg.LENS_DATA)
+            await update.message.reply_text(f"{'✅' if ok else '❌'} {msg}", parse_mode="Markdown")
+        else:
+            await update.message.reply_text("Send `in`, `out`, or `new`.", parse_mode="Markdown")
+    lens.reload()
+
+
+async def lens_expiry_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    msg = lens.check_expiry(cfg.LENS_DATA)
+    if msg:
+        await context.bot.send_message(chat_id=ALLOWED_USER, text=msg, parse_mode="Markdown")
+
+
+# ---------------------------------------------------------------------------
 # Printer
 # ---------------------------------------------------------------------------
 
@@ -1647,6 +1686,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "🖨 *Print a PDF*\n\nSend the PDF file to print.\n/cancel to cancel.",
             parse_mode="Markdown",
         )
+        return
+
+    # ------- Lens Tracker -------
+    if text == "👁 Lenses":
+        session["mode"] = "lens"
+        session["form"] = {}
+        await update.message.reply_text(lens.status(cfg.LENS_DATA), parse_mode="Markdown")
+        return
+
+    if session["mode"] == "lens":
+        await lens_refresh(update, text)
         return
 
     # ------- Price Watch sub-menu -------
@@ -1895,6 +1945,7 @@ def main() -> None:
     _schedule_daily_report(app.job_queue)
     _schedule_price_watch(app.job_queue)
     _schedule_reminder_check(app.job_queue)
+    job_queue.run_repeating(lens_expiry_job, interval=3600, first=30)
 
     log.info("🤖 Bot running — polling for updates…")
     app.run_polling()
