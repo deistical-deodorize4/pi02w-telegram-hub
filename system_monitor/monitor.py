@@ -185,44 +185,44 @@ def _bar(value: float, width: int = 5) -> str:
 
 
 def render(data: SystemSnapshot) -> str:
-    lines = ["=" * 40]
-    lines.append(f"SYS MONITOR - {data.time.datetime}")
+    lines = ["=" * 35]
+    lines.append(f"SYS MONITOR {data.time.datetime}")
     uptime = data.time.uptime_hours
     lines.append(f"UPTIME       : {uptime // 3600}h {(uptime % 3600) // 60}m")
-    lines.append("=" * 40)
+    lines.append("=" * 35)
 
     if data.cpu:
         c = data.cpu
         lines.append(
-            f"CPU          : {c.value:5.1f}% [{c.state:<6}] {_bar(c.value)}"
+            f"CPU        : {c.value:5.1f}% [{c.state:<6}] {_bar(c.value)}"
         )
 
     if data.ram:
         r = data.ram
         lines.append(
-            f"RAM          : {r.percent:5.1f}% {_bar(r.percent)} "
+            f"RAM        : {r.percent:5.1f}% {_bar(r.percent)} "
             f"({r.used_mb:.1f}MB)"
         )
 
     if data.disk:
         d = data.disk
         lines.append(
-            f"DISK         : {d.percent:5.1f}% {_bar(d.percent)} "
+            f"DISK       : {d.percent:5.1f}% {_bar(d.percent)} "
             f"({d.used_gb:.2f}GB/{d.total_gb:.2f}GB)"
         )
 
     if data.temp:
         t = data.temp
-        lines.append(f"TEMP         : {t.value:5.1f}°C [{t.state}]")
+        lines.append(f"TEMP       : {t.value:5.1f}°C [{t.state}]")
 
     if data.load_avg:
         ld = data.load_avg
-        lines.append(f"LOAD (1m)    : {ld.one['value']:.2f} [{ld.one['state']}]")
+        lines.append(f"LOAD       : {ld.one['value']:.2f} [{ld.one['state']}]")
 
     if data.throttled and data.throttled.state == "warning":
         lines.append(f"THROTTLED    : WARNING ({data.throttled.raw})")
 
-    lines.append("=" * 60)
+    lines.append("=" * 35)
     return "\n".join(lines)
 
 
