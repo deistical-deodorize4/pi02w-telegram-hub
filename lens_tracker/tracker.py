@@ -51,10 +51,12 @@ def status(path: Path) -> str:
         h, rem = divmod(int(delta.total_seconds()), 3600)
         m = rem // 60
         lines.append(f"👁 Wearing since {sd.strftime('%H:%M')} ({h}h {m}m)")
-        lines.append("", "Send `out` to stop, `new` for fresh pair.")
+        lines.append("")
+        lines.append("Send `out` to stop, `new` for fresh pair.")
     else:
         lines.append("😴 Not wearing")
-        lines.append("", "Send `in` to start, `new` for fresh pair.")
+        lines.append("")
+        lines.append("Send `in` to start, `new` for fresh pair.")
 
     lines.append("`/cancel` to exit")
     return "\n".join(lines)
