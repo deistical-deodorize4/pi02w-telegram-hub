@@ -213,11 +213,11 @@ def render(data: SystemSnapshot) -> str:
 
     if data.temp:
         t = data.temp
-        lines.append(f"TEMP       : {t.value:5.1f}°C [{t.state}]")
+        lines.append(f"TEMP     : {t.value:5.1f}°C [{t.state}]")
 
     if data.load_avg:
         ld = data.load_avg
-        lines.append(f"LOAD       : {ld.one['value']:.2f} [{ld.one['state']}]")
+        lines.append(f"LOAD     : {ld.one['value']:.2f} [{ld.one['state']}]")
 
     if data.throttled and data.throttled.state == "warning":
         lines.append(f"THROTTLED    : WARNING ({data.throttled.raw})")
