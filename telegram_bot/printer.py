@@ -60,26 +60,36 @@ def _is_ip(s: str) -> bool:
         return False
 
 
-def print_pdf(path: Path, addr: str) -> tuple[bool, str]:
-    if not path.is_file():
-        return False, "File not found"
-    size = path.stat().st_size
-    if size == 0:
-        return False, "File is empty"
-    if size > 50 * 1024 * 1024:
-        return False, "File exceeds 50 MB limit"
+def _lp_available() -> bool:
+    try:
+        result = subprocess.run(["which", "lp"], capture_output=True, text=True)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
 
-    ip = resolve_addr(addr)
-    if not ip:
-        return False, (
-            "Printer not found. Set PRINTER_ADDR in .env\n"
-            "(e.g. PRINTER_ADDR=192.168.1.x) and restart the bot."
+
+def _print_via_lp(path: Path, printer_name: str) -> tuple[bool, str]:
+    try:
+        result = subprocess.run(
+            ["lp", "-d", printer_name, str(path)],
+            capture_output=True, text=True, timeout=_SEND_TIMEOUT,
         )
+        if result.returncode == 0:
+            log.info("Printed %s via CUPS queue %s", path.name, printer_name)
+            return True, f"Sent to printer ({path.name})"
+        err = result.stderr.strip() or "lp command failed"
+        return False, err
+    except FileNotFoundError:
+        return False, "lp command not found (CUPS not installed?)"
+    except subprocess.TimeoutExpired:
+        return False, "lp timed out"
+    except OSError as e:
+        return False, f"lp error: {e}"
 
-    host_label = f"{addr} ({ip})" if addr != ip else ip
+
+def _print_via_raw(path: Path, ip: str) -> tuple[bool, str]:
     try:
         with socket.create_connection((ip, _PRINTER_PORT), timeout=_SEND_TIMEOUT) as sock:
-            # PJL wrapper — tells the printer this is PDF, not raw text
             sock.sendall(b"\x1b%-12345X@PJL JOB\n@PJL ENTER LANGUAGE=PDF\n")
             with open(path, "rb") as f:
                 while True:
@@ -88,16 +98,39 @@ def print_pdf(path: Path, addr: str) -> tuple[bool, str]:
                         break
                     sock.sendall(chunk)
             sock.sendall(b"\n@PJL EOJ\n\x1b%-12345X")
-        log.info("Sent %s (%d B) to %s", path.name, size, host_label)
+        log.info("Sent %s raw to %s", path.name, ip)
         return True, f"Sent to printer ({path.name})"
     except socket.timeout:
         return False, "Printer did not respond (timeout)"
     except ConnectionRefusedError:
         return False, "Printer refused the connection"
     except socket.gaierror:
-        return False, f"Printer address {addr} is unreachable"
+        return False, f"Printer address {ip} is unreachable"
     except OSError as e:
         return False, f"Network error: {e}"
+
+
+def print_pdf(path: Path, addr: str, printer_name: str = "") -> tuple[bool, str]:
+    if not path.is_file():
+        return False, "File not found"
+    size = path.stat().st_size
+    if size == 0:
+        return False, "File is empty"
+    if size > 50 * 1024 * 1024:
+        return False, "File exceeds 50 MB limit"
+
+    if _lp_available() and printer_name:
+        return _print_via_lp(path, printer_name)
+
+    ip = resolve_addr(addr) if addr else None
+    if not ip:
+        return False, (
+            "Printer not found. Install CUPS and run:\n"
+            f"  sudo lpadmin -p HP_Envy_6400 -v ipp://{addr}/ipp/print -E -m everywhere\n"
+            "Then set PRINTER_NAME in .env"
+        )
+
+    return _print_via_raw(path, ip)
 
 
 def _mac_to_bytes(mac: str) -> bytes | None:

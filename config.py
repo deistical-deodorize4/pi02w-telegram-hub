@@ -95,6 +95,7 @@ AEMET_UVI_LOCALIDAD: str = "Zaragoza"      # Localidad name in UV index response
 # ---------------------------------------------------------------------------
 PRINTER_ADDR: str = os.environ.get("PRINTER_ADDR", "")
 PRINTER_MAC: str = os.environ.get("PRINTER_MAC", "")
+PRINTER_NAME: str = os.environ.get("PRINTER_NAME", "HP_Envy_6400")
 
 # ---------------------------------------------------------------------------
 # Ensure essential directories exist

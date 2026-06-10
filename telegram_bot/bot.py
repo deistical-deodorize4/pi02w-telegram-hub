@@ -1467,7 +1467,7 @@ async def handle_print_document(update: Update, context: ContextTypes.DEFAULT_TY
         await file.download_to_drive(local_path)
 
         await status_msg.edit_text("⏳ Sending to printer…")
-        success, msg = prn.print_pdf(local_path, cfg.PRINTER_ADDR)
+        success, msg = prn.print_pdf(local_path, cfg.PRINTER_ADDR, cfg.PRINTER_NAME)
 
         session["mode"] = "menu"
         session["form"] = {}
